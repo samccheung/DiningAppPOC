@@ -39,6 +39,9 @@ export function useAuth(options?: UseAuthOptions) {
     if (redirectOnUnauthenticated && !isLoading && !user) {
       const currentPath = window.location.pathname;
       if (currentPath !== redirectPath) {
+        // remember where the user was (incl. dine-in deep links) so the OAuth
+        // callback can send them back after login
+        sessionStorage.setItem("post_login_next", currentPath + window.location.search);
         navigate(redirectPath);
       }
     }

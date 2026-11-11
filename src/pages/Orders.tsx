@@ -4,15 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { StorefrontLayout } from "@/components/StorefrontLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { STATUS_LABEL } from "@/lib/store";
-
-const STATUS_TONE: Record<string, string> = {
-  placed: "bg-primary",
-  preparing: "bg-amber-600",
-  ready: "bg-emerald-600",
-  completed: "bg-secondary text-secondary-foreground",
-  cancelled: "bg-muted text-muted-foreground",
-};
+import { STATUS_LABEL, STATUS_TONE } from "@/lib/store";
 
 export default function Orders() {
   const { isAuthenticated, isLoading: authLoading } = useAuth({
@@ -59,12 +51,16 @@ export default function Orders() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <span className="font-bold">訂單 #{o.id}</span>
+                  {o.orderType === "dine_in" && <Badge variant="secondary">堂食</Badge>}
                   <Badge className={`${STATUS_TONE[o.status] ?? ""} text-white`}>
                     {STATUS_LABEL[o.status] ?? o.status}
                   </Badge>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  {o.branch}分店 · {o.pickupTime} 取餐
+                  {o.branch}
+                  {o.orderType === "dine_in"
+                    ? ` · 枱號 ${o.tableNo ?? "—"}`
+                    : `分店 · ${o.pickupTime ?? ""} 取餐`}
                 </span>
               </div>
               <ul className="mt-3 space-y-1 text-sm">
@@ -78,7 +74,7 @@ export default function Orders() {
               {o.note && <p className="mt-2 text-xs text-muted-foreground">備註：{o.note}</p>}
               <div className="mt-3 flex items-center justify-between border-t pt-3">
                 <span className="font-bold text-primary">合計 ${o.totalHkd}</span>
-                {["placed", "preparing"].includes(o.status) && (
+                {["placed", "preparing", "delivering"].includes(o.status) && (
                   <Button
                     variant="outline"
                     size="sm"

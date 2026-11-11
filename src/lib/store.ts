@@ -11,9 +11,19 @@ export const CATEGORIES = [
 export const STATUS_LABEL: Record<string, string> = {
   placed: "已落單",
   preparing: "製作中",
+  delivering: "火車送餐中",
   ready: "可取餐",
   completed: "已完成",
   cancelled: "已取消",
+};
+
+export const STATUS_TONE: Record<string, string> = {
+  placed: "bg-primary",
+  preparing: "bg-amber-600",
+  delivering: "bg-sky-600",
+  ready: "bg-emerald-600",
+  completed: "bg-secondary text-secondary-foreground",
+  cancelled: "bg-muted text-muted-foreground",
 };
 
 export function pickupSlots(): string[] {

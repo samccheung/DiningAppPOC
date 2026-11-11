@@ -9,10 +9,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, ShoppingCart, UtensilsCrossed, ReceiptText } from "lucide-react";
+import { LogOut, ShoppingCart, UtensilsCrossed, ReceiptText, TrainFront } from "lucide-react";
 
 const NAV = [
   { to: "/menu", label: "菜單", icon: UtensilsCrossed },
+  { to: "/dine-in", label: "堂食", icon: TrainFront },
   { to: "/cart", label: "購物車", icon: ShoppingCart },
   { to: "/orders", label: "我的訂單", icon: ReceiptText },
 ];

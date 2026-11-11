@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { StorefrontLayout } from "@/components/StorefrontLayout";
@@ -27,6 +27,17 @@ export default function Cart() {
     enabled: isAuthenticated,
   });
   const { data: branches } = trpc.menu.branches.useQuery();
+  const { data: stores } = trpc.menu.stores.useQuery();
+
+  // order mode: ?mode=dinein&store=<id>&table=<no>, default pickup
+  const [params] = useSearchParams();
+  const dineInParam = params.get("mode") === "dinein";
+  const [orderType, setOrderType] = useState<"pickup" | "dine_in">(
+    dineInParam ? "dine_in" : "pickup"
+  );
+  const [storeId, setStoreId] = useState(params.get("store") ?? "");
+  const [tableNo, setTableNo] = useState(params.get("table") ?? "");
+  const store = stores?.find((s) => s.id === storeId) ?? null;
   const setQty = trpc.cart.setQty.useMutation({
     onSuccess: () => utils.cart.list.invalidate(),
   });
@@ -44,7 +55,13 @@ export default function Cart() {
   const slots = useMemo(pickupSlots, []);
 
   const total = cart?.reduce((s, i) => s + i.product.priceHkd * i.qty, 0) ?? 0;
-  const canCheckout = !!branch && !!slot && (cart?.length ?? 0) > 0 && !createOrder.isPending;
+  const tableValid = /^[A-Za-z0-9]{1,6}$/.test(tableNo.trim());
+  const canCheckout =
+    (cart?.length ?? 0) > 0 &&
+    !createOrder.isPending &&
+    (orderType === "pickup"
+      ? !!branch && !!slot
+      : !!store && tableValid);
 
   if (authLoading || !isAuthenticated) return null;
 
@@ -102,34 +119,87 @@ export default function Cart() {
           </div>
 
           <div className="h-fit rounded-xl border bg-card p-4 md:sticky md:top-20">
-            <h2 className="mb-3 font-bold">取餐資料</h2>
+            <h2 className="mb-3 font-bold">{orderType === "pickup" ? "取餐資料" : "用餐資料"}</h2>
+            {/* mode toggle */}
+            <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-secondary p-1">
+              {(["pickup", "dine_in"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setOrderType(t)}
+                  className={`h-10 rounded-md text-sm font-semibold transition-colors ${
+                    orderType === t ? "bg-background shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  {t === "pickup" ? "外賣自取" : "店內用餐"}
+                </button>
+              ))}
+            </div>
             <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="branch">取餐分店</Label>
-                <Select value={branch} onValueChange={setBranch}>
-                  <SelectTrigger id="branch" className="h-11">
-                    <SelectValue placeholder="選擇分店" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(branches ?? []).map((b) => (
-                      <SelectItem key={b} value={b}>{b}分店</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="slot">取餐時間</Label>
-                <Select value={slot} onValueChange={setSlot}>
-                  <SelectTrigger id="slot" className="h-11">
-                    <SelectValue placeholder="選擇時間" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {slots.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {orderType === "pickup" ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="branch">取餐分店</Label>
+                    <Select value={branch} onValueChange={setBranch}>
+                      <SelectTrigger id="branch" className="h-11">
+                        <SelectValue placeholder="選擇分店" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(branches ?? []).map((b) => (
+                          <SelectItem key={b} value={b}>{b}分店</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="slot">取餐時間</Label>
+                    <Select value={slot} onValueChange={setSlot}>
+                      <SelectTrigger id="slot" className="h-11">
+                        <SelectValue placeholder="選擇時間" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {slots.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dineStore">用餐分店</Label>
+                    <Select value={storeId} onValueChange={setStoreId}>
+                      <SelectTrigger id="dineStore" className="h-11">
+                        <SelectValue placeholder="選擇分店" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(stores ?? []).map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tableNo">枱號</Label>
+                    <Input
+                      id="tableNo"
+                      value={tableNo}
+                      maxLength={6}
+                      placeholder="例如 T12"
+                      className="h-11 uppercase"
+                      onChange={(e) => setTableNo(e.target.value)}
+                    />
+                    {tableNo && !tableValid && (
+                      <p className="text-xs text-destructive">枱號格式：1-6 位字母或數字</p>
+                    )}
+                  </div>
+                  {store?.highSpeed && (
+                    <p className="rounded-lg bg-primary/5 px-3 py-2 text-xs text-primary">
+                      高速線分店：落單後火車會直接送餐到你張枱
+                    </p>
+                  )}
+                </>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="note">備註（可留空）</Label>
                 <Input
@@ -153,13 +223,18 @@ export default function Cart() {
               disabled={!canCheckout}
               onClick={() =>
                 createOrder.mutate({
-                  branch: branch as never,
-                  pickupTime: slot,
+                  orderType,
+                  branch:
+                    orderType === "pickup"
+                      ? (branch as never)
+                      : (store?.name ?? storeId),
+                  pickupTime: orderType === "pickup" ? slot : undefined,
+                  tableNo: orderType === "dine_in" ? tableNo.trim().toUpperCase() : undefined,
                   note: note || undefined,
                 })
               }
             >
-              確認落單 · ${total}
+              {orderType === "pickup" ? "確認落單" : `送出到廚房 · 枱號 ${tableNo.trim().toUpperCase() || "—"}`} · ${total}
             </Button>
           </div>
         </div>

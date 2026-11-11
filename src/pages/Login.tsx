@@ -5,7 +5,11 @@ function getOAuthUrl() {
   const kimiAuthUrl = import.meta.env.VITE_KIMI_AUTH_URL;
   const appID = import.meta.env.VITE_APP_ID;
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(redirectUri);
+  // carry the post-login destination (e.g. a dine-in deep link) through the
+  // OAuth round trip inside the state parameter
+  const next = sessionStorage.getItem("post_login_next") ?? "/";
+  sessionStorage.removeItem("post_login_next");
+  const state = btoa(JSON.stringify({ u: redirectUri, n: next }));
 
   const url = new URL(`${kimiAuthUrl}/api/oauth/authorize`);
   url.searchParams.set("client_id", appID);
