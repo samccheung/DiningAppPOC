@@ -9,6 +9,20 @@ export const BRANCHES = [
   "旺角", "尖沙咀", "中環", "銅鑼灣", "沙田", "將軍澳", "九龍塘", "觀塘",
 ] as const;
 
+/** Dine-in stores (high-speed line / 高速線 = bullet-train delivery). */
+export const STORES: Array<{
+  id: string; name: string; address: string; highSpeed: boolean;
+}> = [
+  { id: "northpoint-aia", name: "北角友邦廣場元気寿司高速線", address: "北角電氣道183號友邦廣場地下7-13部份舖", highSpeed: true },
+  { id: "mongkok", name: "旺角元気寿司", address: "旺角彌敦道610號荷李活商業中心地庫", highSpeed: false },
+  { id: "tst", name: "尖沙咀元気寿司", address: "尖沙咀厚福街11號地下", highSpeed: false },
+  { id: "central", name: "中環元気寿司", address: "中環皇后大道中100號地下", highSpeed: false },
+  { id: "causeway", name: "銅鑼灣元気寿司高速線", address: "銅鑼灣駱克道463-483號銅鑼灣廣場二期地下", highSpeed: true },
+  { id: "shatin", name: "沙田元気寿司", address: "沙田正街21-27號沙田廣場3樓", highSpeed: false },
+  { id: "tko", name: "將軍澳元気寿司高速線", address: "將軍澳重華路8號東港城2樓", highSpeed: true },
+  { id: "klnbay", name: "九龍塘元気寿司", address: "九龍塘達之路80號又一城LG2樓", highSpeed: false },
+];
+
 const SEED: Array<{
   nameZh: string; nameEn: string; category: "sushi" | "sashimi" | "rolls" | "set" | "noodles" | "dessert" | "drinks";
   priceHkd: number; plateColor: "red" | "gold" | "silver" | "black" | "blue";
@@ -60,6 +74,7 @@ export const menuRouter = createRouter({
     return getDb().select().from(products).orderBy(asc(products.sortOrder));
   }),
   branches: publicQuery.query(() => [...BRANCHES]),
+  stores: publicQuery.query(() => STORES),
 });
 
 export const cartRouter = createRouter({
@@ -123,8 +138,10 @@ export const ordersRouter = createRouter({
   }),
   create: authedQuery
     .input(z.object({
-      branch: z.enum(BRANCHES),
-      pickupTime: z.string().min(1).max(20),
+      orderType: z.enum(["pickup", "dine_in"]),
+      branch: z.string().min(1).max(100),
+      pickupTime: z.string().max(20).optional(),
+      tableNo: z.string().max(20).optional(),
       note: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -135,11 +152,17 @@ export const ordersRouter = createRouter({
         .innerJoin(products, eq(cartItems.productId, products.id))
         .where(eq(cartItems.userId, ctx.user!.id));
       if (rows.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "購物車是空的" });
+      if (input.orderType === "pickup" && !input.pickupTime)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "請選擇取餐時間" });
+      if (input.orderType === "dine_in" && !input.tableNo)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "請輸入枱號" });
       const total = rows.reduce((s, r) => s + r.product.priceHkd * r.cartItem.qty, 0);
       const inserted = await db.insert(orders).values({
         userId: ctx.user!.id,
         branch: input.branch,
-        pickupTime: input.pickupTime,
+        pickupTime: input.pickupTime ?? null,
+        orderType: input.orderType,
+        tableNo: input.tableNo ?? null,
         note: input.note ?? null,
         totalHkd: total,
       });

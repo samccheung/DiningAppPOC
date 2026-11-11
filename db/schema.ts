@@ -55,10 +55,12 @@ export const orders = mysqlTable("orders", {
   id: serial("id").primaryKey(),
   userId: bigint("userId", { mode: "number", unsigned: true }).notNull().references(() => users.id),
   branch: varchar("branch", { length: 100 }).notNull(),
-  pickupTime: varchar("pickupTime", { length: 20 }).notNull(),
+  pickupTime: varchar("pickupTime", { length: 20 }),
   note: varchar("note", { length: 500 }),
   totalHkd: int("totalHkd").notNull(),
-  status: mysqlEnum("status", ["placed", "preparing", "ready", "completed", "cancelled"]).default("placed").notNull(),
+  orderType: mysqlEnum("orderType", ["pickup", "dine_in"]).default("pickup").notNull(),
+  tableNo: varchar("tableNo", { length: 20 }),
+  status: mysqlEnum("status", ["placed", "preparing", "delivering", "ready", "completed", "cancelled"]).default("placed").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type Order = typeof orders.$inferSelect;

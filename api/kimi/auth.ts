@@ -93,7 +93,17 @@ export function createOAuthCallbackHandler() {
     }
 
     try {
-      const redirectUri = atob(state);
+      // state is either a legacy plain redirect URI or JSON { u, n } carrying
+      // the post-login in-app destination
+      let redirectUri: string;
+      let next = "/";
+      try {
+        const parsed = JSON.parse(atob(state)) as { u?: string; n?: string };
+        redirectUri = parsed.u ?? atob(state);
+        next = parsed.n ?? "/";
+      } catch {
+        redirectUri = atob(state);
+      }
       const tokenResp = await exchangeAuthCode(code, redirectUri);
       const { userId } = await verifyAccessToken(tokenResp.access_token);
       const userProfile = await kimiUsers.getProfile(tokenResp.access_token);
@@ -119,7 +129,7 @@ export function createOAuthCallbackHandler() {
         maxAge: Session.maxAgeMs / 1000,
       });
 
-      return c.redirect("/", 302);
+      return c.redirect(next, 302);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       return c.json({ error: "OAuth callback failed" }, 500);
