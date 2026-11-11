@@ -1,10 +1,10 @@
-# Genki — Sushi Takeaway Ordering POC (元気壽司)
+# Takeaway Ordering POC 
 
-A proof-of-concept fullstack web app modeled on the Genki Sushi Hong Kong online
-ordering experience (order.genkisushi.com.hk): browse the menu, add items to a
+A proof-of-concept fullstack web app modeled on the  online
+ordering experience: browse the menu, add items to a
 persistent cart, and place pickup orders for a chosen branch and time slot.
 
-> Demo only — not affiliated with Genki Sushi. Menu items are illustrative.
+> Demo only — not affiliated. Menu items are illustrative.
 
 ## Stack
 
