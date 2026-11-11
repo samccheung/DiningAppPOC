@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { StorefrontLayout } from "@/components/StorefrontLayout";
@@ -13,6 +13,15 @@ import { CATEGORIES } from "@/lib/store";
 export default function Menu() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const [params] = useSearchParams();
+  // dine-in mode: /menu?mode=dinein&store=<id>&table=<no>
+  const dineIn = params.get("mode") === "dinein" ? {
+    store: params.get("store") ?? "",
+    table: params.get("table") ?? "",
+  } : null;
+  const { data: stores } = trpc.menu.stores.useQuery(undefined, { enabled: !!dineIn });
+  const dineInStore = dineIn ? stores?.find((s) => s.id === dineIn.store) ?? null : null;
+  const cartQuery = dineIn ? `?mode=dinein&store=${dineIn.store}&table=${encodeURIComponent(dineIn.table)}` : "";
   const [active, setActive] = useState<string>("sushi");
   const { data: products, isLoading, error } = trpc.menu.list.useQuery();
   const utils = trpc.useUtils();
@@ -37,6 +46,21 @@ export default function Menu() {
           全線近70間分店取餐 · 網上落單 · 到店即取
         </p>
       </div>
+
+      {dineIn && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Badge className="bg-primary gap-1">店內用餐</Badge>
+          <span className="font-medium">{dineInStore?.name ?? dineIn.store}</span>
+          {dineIn.table && <Badge variant="secondary">枱號 {dineIn.table}</Badge>}
+          {dineInStore?.highSpeed && <Badge variant="secondary" className="gap-1">高速線送枱</Badge>}
+          <button
+            className="ml-auto text-xs text-muted-foreground underline underline-offset-2"
+            onClick={() => navigate("/dine-in")}
+          >
+            更改
+          </button>
+        </div>
+      )}
 
       {/* category tabs */}
       <div className="sticky top-14 z-30 -mx-4 bg-background/95 px-4 py-2 backdrop-blur">
@@ -93,6 +117,7 @@ export default function Menu() {
                   disabled={add.isPending}
                   onClick={() => {
                     if (!isAuthenticated) {
+                      sessionStorage.setItem("post_login_next", window.location.pathname + window.location.search);
                       navigate("/login");
                       return;
                     }
@@ -113,8 +138,9 @@ export default function Menu() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShoppingCart className="h-4 w-4" />
             {cartCount > 0 ? `${cartCount} 件商品` : "購物車"}
+            {dineIn ? " · 堂食" : ""}
           </div>
-          <Button className="h-11 px-6 font-semibold" onClick={() => navigate("/cart")}>
+          <Button className="h-11 px-6 font-semibold" onClick={() => navigate(`/cart${cartQuery}`)}>
             查看購物車
           </Button>
         </div>
